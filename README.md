@@ -1,6 +1,6 @@
 # Velocity Ramp Controller
 
-A minimal [CppModel](https://workspace.cppmodel.com) simulation, written to accompany an
+A minimal [CppModel](https://www.cppmodel.com) simulation, written to accompany an
 article introducing CppModel. It exercises a small C controller that ramps an actuator's
 velocity toward a series of setpoints, using separate acceleration and braking settle
 windows, and checks that it always settles in time.
@@ -25,8 +25,9 @@ recording `ActualVelocity` and `CppModel.StepResult` — see
 - CMake >= 3.12
 - A C and C++17 compiler (GCC, Clang, or MSVC)
 - OpenSSL and zlib development libraries (needed by the CppModel client libraries)
-- A free [CppModel](https://workspace.cppmodel.com) account — you'll be prompted to log in
-  through your browser the first time you run the simulation (see [Run](#3-run) below)
+- A free [CppModel](https://www.cppmodel.com) account — running the binary directly
+  prompts you to log in through your browser; running non-interactively (e.g. via `ctest`)
+  needs credentials in `.env` instead (see [Credentials](#2-credentials) below)
 
 ## 1. Fetch the CppModel dependencies
 
@@ -45,23 +46,40 @@ git-ignored) and auto-detect your compiler/toolchain:
 Run this again whenever you want to update to the latest CppModel release — it replaces
 the contents of `dependencies/` each time.
 
-## 2. Build
+## 2. Credentials
+
+Running the binary directly is interactive: it opens your default browser to the CppModel
+login page the first time (and whenever your session has expired), so sign up for a free
+account at [www.cppmodel.com](https://www.cppmodel.com) if you don't have one yet, then log
+in there to let the run proceed.
+
+Running non-interactively — e.g. via `ctest`, or in CI — has no browser to log in with, so
+it needs credentials supplied up front instead. Copy the example env file and fill in your
+account:
+
+```sh
+cp .env.example .env
+```
+
+```
+CPPMODEL_USERNAME=you@example.com
+CPPMODEL_PASSWORD=your-password
+```
+
+`.env` is git-ignored — never commit it.
+
+## 3. Build
 
 ```sh
 cmake -S . -B build
 cmake --build build
 ```
 
-## 3. Run
+## 4. Run
 
 ```sh
 ./build/velocity_ramp_controller
 ```
-
-On first run (and whenever your session has expired), the binary opens your default
-browser to the CppModel login page — sign up for a free account at
-[workspace.cppmodel.com](https://workspace.cppmodel.com) if you don't have one yet, then
-log in there to let the run proceed.
 
 Exit code `0` means every cycle's `CppModel.StepResult` was `1`, i.e. the ramp always
 settled within its window. A non-zero exit means at least one cycle failed. Either way,
@@ -71,9 +89,11 @@ inspect the full per-cycle signal trace.
 ### Run via CTest
 
 The simulation is also registered as a CMake/CTest test (see
-[CMakeLists.txt](CMakeLists.txt)), so it can run alongside any other tests in the project:
+[CMakeLists.txt](CMakeLists.txt)), so it can run alongside any other tests in the project.
+`ctest` runs non-interactively, so source `.env` first (see [Credentials](#2-credentials)):
 
 ```sh
+set -a && source .env && set +a
 cd build && ctest --output-on-failure
 ```
 
@@ -84,6 +104,7 @@ cd build && ctest --output-on-failure
 | `velocity_ramp_controller.c`     | The controller under test and its CppModel simulation      |
 | `CMakeLists.txt`                 | Build definition; registers the simulation with CTest      |
 | `scripts/update-cppmodel.sh/.ps1`| Downloads the CppModel headers/libs into `dependencies/`   |
+| `.env.example`                   | Template for the credentials needed by non-interactive runs |
 | `dependencies/`                  | CppModel headers, static libs, and third-party licenses (fetched, git-ignored) |
 
 ## Third-party licenses
