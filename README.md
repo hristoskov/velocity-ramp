@@ -1,0 +1,98 @@
+# Velocity Ramp Controller
+
+A minimal [CppModel](https://workspace.cppmodel.com) simulation, written to accompany an
+article introducing CppModel. It exercises a small C controller that ramps an actuator's
+velocity toward a series of setpoints, using separate acceleration and braking settle
+windows, and checks that it always settles in time.
+
+The controller under test lives entirely in [velocity_ramp_controller.c](velocity_ramp_controller.c):
+
+- `VELOCITY_SCHEDULE` drives the target velocity through four setpoints (`50 -> 150 -> 30 -> 0`)
+  at fixed times.
+- `RampStep` moves the actual velocity toward the target by at most `MaxAcceleration` per
+  cycle.
+- Each cycle reports `CppModel.StepResult` = 1 as long as the ramp is still within its
+  settle window (`AccelerationWindowTimeMs` while speeding up, `BrakingWindowTimeMs` while
+  braking) or has already reached the target within `VELOCITY_EPSILON`.
+
+CppModel drives the simulation cycle-by-cycle, feeding in `DesiredVelocity`/parameters and
+recording `ActualVelocity` and `CppModel.StepResult` — see
+[CModel.h](dependencies/include/cppmodel/CModel.h) for the full C API surface used by
+`CMODEL_CYCLIC()`/`CMODEL_SIMULATE()`.
+
+## Prerequisites
+
+- CMake >= 3.12
+- A C and C++17 compiler (GCC, Clang, or MSVC)
+- OpenSSL and zlib development libraries (needed by the CppModel client libraries)
+- A free [CppModel](https://workspace.cppmodel.com) account — you'll be prompted to log in
+  through your browser the first time you run the simulation (see [Run](#3-run) below)
+
+## 1. Fetch the CppModel dependencies
+
+The CppModel headers and static libraries aren't vendored in this repo — pull them with
+the platform script for your OS. Both scripts write into `dependencies/` (already
+git-ignored) and auto-detect your compiler/toolchain:
+
+```sh
+# Linux / macOS
+./scripts/update-cppmodel.sh
+
+# Windows (PowerShell)
+.\scripts\update-cppmodel.ps1
+```
+
+Run this again whenever you want to update to the latest CppModel release — it replaces
+the contents of `dependencies/` each time.
+
+## 2. Build
+
+```sh
+cmake -S . -B build
+cmake --build build
+```
+
+## 3. Run
+
+```sh
+./build/velocity_ramp_controller
+```
+
+On first run (and whenever your session has expired), the binary opens your default
+browser to the CppModel login page — sign up for a free account at
+[workspace.cppmodel.com](https://workspace.cppmodel.com) if you don't have one yet, then
+log in there to let the run proceed.
+
+Exit code `0` means every cycle's `CppModel.StepResult` was `1`, i.e. the ramp always
+settled within its window. A non-zero exit means at least one cycle failed. Either way,
+the run prints a `UI: https://workspace.cppmodel.com/simulations/...` link — open it to
+inspect the full per-cycle signal trace.
+
+### Run via CTest
+
+The simulation is also registered as a CMake/CTest test (see
+[CMakeLists.txt](CMakeLists.txt)), so it can run alongside any other tests in the project:
+
+```sh
+cd build && ctest --output-on-failure
+```
+
+## Project layout
+
+| Path                            | Description                                              |
+| -------------------------------- | ---------------------------------------------------------- |
+| `velocity_ramp_controller.c`     | The controller under test and its CppModel simulation      |
+| `CMakeLists.txt`                 | Build definition; registers the simulation with CTest      |
+| `scripts/update-cppmodel.sh/.ps1`| Downloads the CppModel headers/libs into `dependencies/`   |
+| `dependencies/`                  | CppModel headers, static libs, and third-party licenses (fetched, git-ignored) |
+
+## Third-party licenses
+
+The CppModel distribution pulled by `scripts/update-cppmodel.*` bundles a few third-party
+libraries; their licenses are included at `dependencies/licenses/` after fetching
+(cpp-httplib, IXWebSocket, jwt-cpp, nlohmann/json, OpenSSL, picojson).
+
+## License
+
+The code in this repository (everything outside `dependencies/`) is available under the
+[MIT License](LICENSE).
