@@ -113,13 +113,18 @@ cd build && ctest --output-on-failure
 ## Continuous integration
 
 [.github/workflows/ci.yml](.github/workflows/ci.yml) builds and `ctest`s the simulation on
-every push/PR to `main`, using the latest compiler each platform supports:
+every push/PR to `main`:
 
-| OS      | Compiler              |
-| ------- | ---------------------- |
-| Linux   | GCC 16                 |
-| macOS   | AppleClang (Xcode CLT) |
-| Windows | MSVC                   |
+| OS      | Toolchain                       |
+| ------- | --------------------------------- |
+| Linux   | GCC 16                            |
+| macOS   | AppleClang (Xcode CLT) + Homebrew OpenSSL |
+| Windows | MinGW UCRT64 (MSYS2)              |
+
+Windows uses MinGW/UCRT64 rather than MSVC because `CMakeLists.txt` links `crypto`/`ssl`/`z`
+by bare name (the Unix `-l<name>` convention) instead of via `find_package(OpenSSL)` —
+MinGW packages follow that same naming convention, while MSVC's own OpenSSL builds produce
+differently-named `.lib` files that CMake can't resolve from a bare name.
 
 Each job runs `scripts/update-cppmodel.sh`/`.ps1` for that platform, then builds and runs
 `ctest` exactly as described above. Since `ctest` runs non-interactively, the workflow needs

@@ -19,7 +19,7 @@ jobs:
           - os: macos-latest
             name: macOS (AppleClang)
           - os: windows-latest
-            name: Windows (MSVC)
+            name: Windows (MinGW UCRT64)
     env:
       CPPMODEL_USERNAME: ${{ secrets.CPPMODEL_USERNAME }}
       CPPMODEL_PASSWORD: ${{ secrets.CPPMODEL_PASSWORD }}
@@ -27,9 +27,6 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
-      # Linux ships an older default GCC; pull in the latest supported
-      # version (matching the "gcc16" archive from download.cppmodel.com)
-      # from the well-known toolchain PPA.
       - name: Install GCC 16 (Linux)
         if: runner.os == 'Linux'
         run: |
@@ -45,26 +42,54 @@ jobs:
         env:
           COMPILER: gcc16
 
+      - name: Point linker at OpenSSL (macOS)
+        if: runner.os == 'macOS'
+        run: |
+          brew install openssl@3
+          echo "LIBRARY_PATH=$(brew --prefix openssl@3)/lib:$LIBRARY_PATH" >> "$GITHUB_ENV"
+
       - name: Fetch CppModel dependencies (macOS)
         if: runner.os == 'macOS'
         run: ./scripts/update-cppmodel.sh
 
+      - name: Setup MinGW UCRT64 toolchain (Windows)
+        if: runner.os == 'Windows'
+        uses: msys2/setup-msys2@v2
+        with:
+          msystem: UCRT64
+          update: true
+          install: >-
+            mingw-w64-ucrt-x86_64-gcc
+            mingw-w64-ucrt-x86_64-cmake
+            mingw-w64-ucrt-x86_64-ninja
+            mingw-w64-ucrt-x86_64-openssl
+            mingw-w64-ucrt-x86_64-zlib
+
       - name: Fetch CppModel dependencies (Windows)
         if: runner.os == 'Windows'
         shell: pwsh
-        run: .\scripts\update-cppmodel.ps1 -Platform MSVC
+        run: .\scripts\update-cppmodel.ps1 -Platform UCRT64
 
-      - name: Configure
+      - name: Configure and build (Linux/macOS)
         if: runner.os != 'Windows'
-        run: cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo
+        run: |
+          cmake -S . -B build -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          cmake --build build --config RelWithDebInfo
 
-      - name: Configure (Windows)
+      - name: Configure and build (Windows)
         if: runner.os == 'Windows'
-        run: cmake -S . -B build
+        shell: msys2 {0}
+        run: |
+          cmake -S . -B build -G Ninja -DCMAKE_BUILD_TYPE=RelWithDebInfo
+          cmake --build build
 
-      - name: Build
-        run: cmake --build build --config RelWithDebInfo
-
-      - name: Test
+      - name: Test (Linux/macOS)
+        if: runner.os != 'Windows'
         working-directory: build
         run: ctest --output-on-failure -C RelWithDebInfo
+
+      - name: Test (Windows)
+        if: runner.os == 'Windows'
+        shell: msys2 {0}
+        working-directory: build
+        run: ctest --output-on-failure
