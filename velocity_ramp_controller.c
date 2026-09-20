@@ -53,7 +53,7 @@ CMODEL_CYCLIC()
         }
     }
 
-    float maxAcceleration = CppModel_getParameterF32(self, "MaxAcceleration", 1.0f);
+    float maxAcceleration = CppModel_getParameterF32(self, "MaxAcceleration", 2.0f);
     uint32_t accelerationSettleTime_ms = CppModel_getParameterU32(self, "AccelerationWindowTimeMs", 100);
     uint32_t decelerationSettleTime_ms = CppModel_getParameterU32(self, "BrakingWindowTimeMs", 100);
 

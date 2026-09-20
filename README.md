@@ -1,5 +1,7 @@
 # Velocity Ramp Controller
 
+[![CI](https://github.com/hristoskov/velocity-ramp/actions/workflows/ci.yml/badge.svg)](https://github.com/hristoskov/velocity-ramp/actions/workflows/ci.yml)
+
 A minimal [CppModel](https://www.cppmodel.com) simulation, written to accompany an
 article introducing CppModel. It exercises a small C controller that ramps an actuator's
 velocity toward a series of setpoints, using separate acceleration and braking settle
@@ -33,7 +35,7 @@ recording `ActualVelocity` and `CppModel.StepResult` — see
 
 The CppModel headers and static libraries aren't vendored in this repo — pull them with
 the platform script for your OS. Both scripts write into `dependencies/` (already
-git-ignored) and auto-detect your compiler/toolchain:
+git-ignored) and auto-detect your OS/architecture and, on Linux, your compiler:
 
 ```sh
 # Linux / macOS
@@ -104,8 +106,26 @@ cd build && ctest --output-on-failure
 | `velocity_ramp_controller.c`     | The controller under test and its CppModel simulation      |
 | `CMakeLists.txt`                 | Build definition; registers the simulation with CTest      |
 | `scripts/update-cppmodel.sh/.ps1`| Downloads the CppModel headers/libs into `dependencies/`   |
+| `.github/workflows/ci.yml`       | Builds and tests on Linux, macOS, and Windows               |
 | `.env.example`                   | Template for the credentials needed by non-interactive runs |
 | `dependencies/`                  | CppModel headers, static libs, and third-party licenses (fetched, git-ignored) |
+
+## Continuous integration
+
+[.github/workflows/ci.yml](.github/workflows/ci.yml) builds and `ctest`s the simulation on
+every push/PR to `main`, using the latest compiler each platform supports:
+
+| OS      | Compiler              |
+| ------- | ---------------------- |
+| Linux   | GCC 16                 |
+| macOS   | AppleClang (Xcode CLT) |
+| Windows | MSVC                   |
+
+Each job runs `scripts/update-cppmodel.sh`/`.ps1` for that platform, then builds and runs
+`ctest` exactly as described above. Since `ctest` runs non-interactively, the workflow needs
+`CPPMODEL_USERNAME` and `CPPMODEL_PASSWORD` set as [repository
+secrets](../../settings/secrets/actions) (Settings → Secrets and variables → Actions) —
+without them, every job's test step fails at login.
 
 ## Third-party licenses
 
