@@ -53,14 +53,14 @@ CMODEL_CYCLIC()
         }
     }
 
-    float maxAcceleration = CppModel_getParameterF32(self, "MaxAcceleration", 2.0f);
-    uint32_t accelerationSettleTime_ms = CppModel_getParameterU32(self, "AccelerationWindowTimeMs", 100);
-    uint32_t decelerationSettleTime_ms = CppModel_getParameterU32(self, "BrakingWindowTimeMs", 100);
+    float maxAcceleration = CppModel_getParameterF32(self, "Max Acceleration [m/s^2]", 2.0f) * 1000.0f;
+    uint32_t accelerationSettleTime_ms = CppModel_getParameterU32(self, "Acceleration Window [ms]", 100);
+    uint32_t decelerationSettleTime_ms = CppModel_getParameterU32(self, "Braking Window [ms]", 100);
 
-    float desiredVelocity = CppModel_getInputF32(self, "DesiredVelocity", desiredVelocityFallback);
+    float desiredVelocity = CppModel_getInputF32(self, "Desired Velocity [mm/s]", desiredVelocityFallback);
 
     float previousVelocity = actualVelocity;
-    actualVelocity = RampStep(actualVelocity, desiredVelocity, maxAcceleration);
+    actualVelocity = RampStep(actualVelocity, desiredVelocity, maxAcceleration * 0.001f);
 
     if (levelStartTime_ms != latchedLevelStartTime_ms)
     {
@@ -72,16 +72,16 @@ CMODEL_CYCLIC()
     unsigned long timeSinceLevelChange_ms = currentTime_ms - levelStartTime_ms;
     uint8_t settleDeadlinePassed = timeSinceLevelChange_ms >= settleTime_ms;
 
-    CppModel_setOutputF32(self, "ActualVelocity", actualVelocity);
+    CppModel_setOutputF32(self, "Actual Velocity [mm/s]", actualVelocity);
 
     // --- Visualization only: acceleration/braking band overlays, safe to comment out ---
-    // uint8_t accelerationWindowActive = isAccelerating && (timeSinceLevelChange_ms < accelerationSettleTime_ms);
-    // uint8_t brakingWindowActive = !isAccelerating && (timeSinceLevelChange_ms < decelerationSettleTime_ms);
-    // float accelerationWindow = accelerationWindowActive ? VELOCITY_SETTLE_BAND : 0.0f;
-    // float brakingWindow = brakingWindowActive ? -VELOCITY_SETTLE_BAND : 0.0f;
+    uint8_t accelerationWindowActive = isAccelerating && (timeSinceLevelChange_ms < accelerationSettleTime_ms);
+    uint8_t brakingWindowActive = !isAccelerating && (timeSinceLevelChange_ms < decelerationSettleTime_ms);
+    float accelerationWindow = accelerationWindowActive ? VELOCITY_SETTLE_BAND : 0.0f;
+    float brakingWindow = brakingWindowActive ? -VELOCITY_SETTLE_BAND : 0.0f;
 
-    // CppModel_setOutputF32(self, "AccelerationWindow", accelerationWindow);
-    // CppModel_setOutputF32(self, "BrakingWindow", brakingWindow);
+    CppModel_setOutputF32(self, "Acc Window [ms]", accelerationWindow);
+    CppModel_setOutputF32(self, "Brake Window [ms]", brakingWindow);
     // --- end visualization block ---
 
     uint8_t settledInTime = !settleDeadlinePassed || fabsf(actualVelocity - desiredVelocity) <= VELOCITY_EPSILON;
