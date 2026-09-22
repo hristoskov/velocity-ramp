@@ -53,7 +53,7 @@ CMODEL_CYCLIC()
         }
     }
 
-    float maxAcceleration = CppModel_getParameterF32(self, "Max Acceleration [m/s^2]", 2.0f) * 1000.0f;
+    float maxAcceleration = CppModel_getParameterF32(self, "Max Acceleration [m/s^2]", 4.0f) * 1000.0f;
     uint32_t accelerationSettleTime_ms = CppModel_getParameterU32(self, "Acceleration Window [ms]", 100);
     uint32_t decelerationSettleTime_ms = CppModel_getParameterU32(self, "Braking Window [ms]", 100);
 
@@ -80,8 +80,8 @@ CMODEL_CYCLIC()
     float accelerationWindow = accelerationWindowActive ? VELOCITY_SETTLE_BAND : 0.0f;
     float brakingWindow = brakingWindowActive ? -VELOCITY_SETTLE_BAND : 0.0f;
 
-    CppModel_setOutputF32(self, "Acc Window [ms]", accelerationWindow);
-    CppModel_setOutputF32(self, "Brake Window [ms]", brakingWindow);
+    CppModel_getInputF32(self, "Acceleration Window Active", accelerationWindow);
+    CppModel_getInputF32(self, "Braking Window Active", brakingWindow);
     // --- end visualization block ---
 
     uint8_t settledInTime = !settleDeadlinePassed || fabsf(actualVelocity - desiredVelocity) <= VELOCITY_EPSILON;
